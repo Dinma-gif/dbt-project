@@ -10,26 +10,39 @@ WITH
     hr_staff_mobility_rw AS (
         SELECT *
         FROM {{ source("public", "sheet2") }}
-    --    WHERE true
-    --     {% if is_incremental() %}
-    --        AND date_of_mobility >= (SELECT MAX(date_of_mobility) FROM {{ this }})
-    --     {% endif %}
+        -- {% if is_incremental() %}
+        -- WHERE date_of_mobility >= (SELECT MAX(date_of_mobility) FROM {{ this }})
+        -- {% endif %}
+    ),
+
+    final AS (
+        SELECT
+            trim(name) AS name,
+            cast(date_of_mobility AS date) AS date_of_mobility,
+            trim(previous_role) AS previous_role,
+            trim(previous_manager) AS previous_manager,
+            CASE 
+                WHEN previous_job_level = 'N/A' THEN NULL
+                ELSE previous_job_level
+            END AS previous_job_level,
+            trim(previous_functional_group) AS previous_function,
+                            -- LEAD function to get the next date_of_mobility for valid_to
+
+            ROW_NUMBER() OVER (PARTITION BY previous_role ORDER BY cast(date_of_mobility AS date) DESC) AS row_num  
+        FROM hr_staff_mobility_rw
+        WHERE name IS NOT NULL AND name != '#N/A' 
     )
 
-    , final as (
-        select
-            trim(name) as name,
-            cast(date_of_mobility as date) as date_of_mobility,
-            trim(previous_role) as previous_role,
-            trim(previous_manager) as previous_manager,
-            case 
-                when previous_job_level = 'N/A' then NULL
-                else previous_job_level
-            end as previous_job_level,
-            trim(previous_functional_group) as previous_function
+-- Select the most recent row for each employee (row_num = 1)
+SELECT
+    name,
+    date_of_mobility,
+    previous_role,
+    previous_manager,
+    previous_job_level,
+    previous_function
+    -- If valid_to is null, leave it as NULL or use COALESCE() for a default value
 
-        from hr_staff_mobility_rw
-        where name is not null and name !='#N/A'
-    )
-
-    select * from final
+FROM final
+WHERE row_num = 1
+ 

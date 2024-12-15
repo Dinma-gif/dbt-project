@@ -1,4 +1,4 @@
-{{
+{{ 
     config(
         materialized='incremental', 
         on_schema_change='append_new_columns',  
@@ -6,78 +6,94 @@
     )
 }}
 
-with
-    hr_staff_current_rw as (
-        select *
-        from {{ source("public", "sheet1") }}
-        where true
-        -- {% if is_incremental() %}
-        --    AND start_date >= (SELECT MAX(start_date) FROM {{ this }})
-        -- {% endif %}
-    )
+WITH
 
-, hr_staff_current_int as (
-    select 
-        lower(trim(email)) AS email,
-        trim(name) AS name,
-        coalesce(trim(role), 'unknown') AS role,
+-- Step 1: Select the raw data
+hr_staff_current_rw AS (
+    SELECT *
+    FROM {{ source("public", "sheet1") }}
+    WHERE true
+    -- {% if is_incremental() %}
+    --    AND start_date >= (SELECT MAX(start_date) FROM {{ this }})
+    -- {% endif %}
+),
+
+-- Step 2: Clean and format the data
+hr_staff_current_int AS (
+    SELECT 
+        LOWER(TRIM(email)) AS email,  -- Ensure emails are lowercase and trimmed
+        TRIM(name) AS name,
+        COALESCE(TRIM(role), 'unknown') AS role,
         job_level,
-        lower(trim(manager_email)) AS manager_email,
-        cast(start_date AS date) AS start_date,
-        REGEXP_REPLACE(trim(nationality), '\\(.*\\)', '') AS nationality, 
-        --trim(nationality) AS nationality,
-        trim(residence) AS residence,
-        coalesce(gender, 'unknown') AS gender,
-        cast(birthday as date) as birthday,
-        trim(business_group) AS business_group
-    from hr_staff_current_rw
-)
+        LOWER(TRIM(manager_email)) AS manager_email,
+        CAST(start_date AS date) AS start_date,
+        REGEXP_REPLACE(TRIM(nationality), '\\(.*\\)', '') AS nationality,  -- Clean up nationality
+        TRIM(residence) AS residence,
+        COALESCE(gender, 'unknown') AS gender,
+        CAST(birthday AS date) AS birthday,
+        TRIM(business_group) AS business_group
+    FROM hr_staff_current_rw
+),
 
-, hr_staff_current_final AS (
-    select 
+-- Step 3: Handle multiple nationalities by splitting into rows
+hr_staff_current_final AS (
+    SELECT 
         email,
         name,
         role,
         job_level,
-        manager_email,
+        manager_email AS manager_name,
         start_date,
-        trim(split_part(nationality, ',', 1)) AS nationality,
+        TRIM(SPLIT_PART(nationality, ',', 1)) AS nationality,
         residence,
         gender,
         business_group
-    from hr_staff_current_int
-    union all 
-    select 
+    FROM hr_staff_current_int
+    UNION ALL 
+    SELECT 
         email,
         name,
         role,
         job_level,
-        manager_email,
+        manager_email AS manager_name,
         start_date,
-        trim(split_part(nationality, ',', 2)) AS nationality,
+        TRIM(SPLIT_PART(nationality, ',', 2)) AS nationality,
         residence,
         gender,
         business_group
-    from hr_staff_current_int
-    where length(nationality) - length(replace(nationality, ',', '')) >= 1
-)
+    FROM hr_staff_current_int
+    WHERE LENGTH(nationality) - LENGTH(REPLACE(nationality, ',', '')) >= 1  -- Handle multiple nationalities
+),
 
-, final as (
-    select 
-        distinct
+-- Step 4: Add Row Number to get distinct records
+final AS (
+    SELECT 
         email,
         name,
         role,
         job_level,
-        manager_email as manager_name,
+        manager_name,
         start_date,
         nationality,
         residence,
         gender,
-        business_group
-    from hr_staff_current_final
+        business_group,
+        ROW_NUMBER() OVER (PARTITION BY email ORDER BY start_date DESC) AS row_num  -- Ensure distinct records by email and order by start_date
+    FROM hr_staff_current_final
 )
 
-select * 
-from final
-order by email, nationality
+-- Step 5: Final Selection (Return only the most recent record for each email)
+SELECT 
+    email,
+    name,
+    role,
+    job_level,
+    manager_name,
+    start_date,
+    nationality,
+    residence,
+    gender,
+    business_group
+FROM final
+WHERE row_num = 1  -- Only take the most recent record for each email
+ORDER BY email, nationality

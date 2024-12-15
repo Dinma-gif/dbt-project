@@ -1,0 +1,45 @@
+version: 2
+
+models:
+  - name: final_staff_history
+    description: |
+      This model combines and cleans employee data from three sources:
+      - `stg_hr_staff_current`: Contains current employee details (role, job level, etc.)
+      - `stg_db_staff`: Contains staff-related details (e.g., position, staff ID)
+      - `stg_hr_staff_mobility`: Contains the role mobility history of employees.
+
+      The model generates a final staff history table by joining these sources and selecting the most recent entry (based on `date_of_mobility`) for each staff member. The table includes both current staff data and role change history. It handles cases where there may be missing values in the data (using `COALESCE`) and ensures that the most up-to-date data is returned.
+
+    columns:
+      - name: staff_name
+        description: "The name of the staff member, derived from the current staff or mobility record."
+      - name: staff_email
+        description: "The email address of the staff member. If no email is available, defaults to 'unknown'."
+      - name: staff_role
+        description: "The role of the staff member. It is derived from either the current role or the previous role from the mobility data."
+      - name: current_staff_job_level
+        description: "The job level of the staff member. The most recent job level is used, either from the current data or mobility history."
+      - name: manager_name
+        description: "The name of the manager. If no manager is available, it uses the manager from the mobility data."
+      - name: date_of_mobility
+        description: "The date when the employee changed roles."
+      - name: previous_role
+        description: "The previous role of the employee before the mobility event."
+      - name: previous_manager
+        description: "The previous manager of the employee."
+      - name: residence
+        description: "The residence country of the staff member."
+      - name: start_date
+        description: "The start date of the employee in their current role."
+      - name: nationality
+        description: "The nationality of the staff member."
+      - name: gender
+        description: "The gender of the staff member."
+      - name: business_group
+        description: "The business group the staff member is assigned to."
+
+    tests:
+      - unique:
+          column_names: ["staff_email"]
+      - not_null:
+          column_names: ["staff_name", "staff_email", "staff_role"]

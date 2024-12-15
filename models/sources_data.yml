@@ -1,0 +1,7 @@
+version: 2
+sources:
+  - name: public # This is the source name, database  where the tables resides
+    tables:
+      - name: sheet1 #Contains up-to-date staff information, as recorded by the People Operations Team.
+      - name: sheet2 #Contains records of staff changes (e.g. promotions )maintained by the People Operations Team.
+      - name: sheet3 #Contains information about staff as recorded in the company’s application (product) database.

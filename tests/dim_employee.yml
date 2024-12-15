@@ -1,0 +1,19 @@
+version: 2
+models :
+  - name: dim_employee
+    description: "unified staff dimension table capturing 
+                    current and historical staff data."
+    
+    columns:
+      - name: staff_id
+        description: 'unique staff identifier'
+        tests:
+          - not_null
+      - name: email
+        description: 'primary email of the staff.'
+        tests:
+          - not_null
+
+
+
+

@@ -28,6 +28,7 @@ with
         --trim(nationality) AS nationality,
         trim(residence) AS residence,
         coalesce(gender, 'unknown') AS gender,
+        cast(birthday as date) as birthday,
         trim(business_group) AS business_group
     from hr_staff_current_rw
 )
@@ -68,7 +69,7 @@ with
         name,
         role,
         job_level,
-        manager_email,
+        manager_email as manager_name,
         start_date,
         nationality,
         residence,

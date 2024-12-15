@@ -10,10 +10,10 @@ WITH
     hr_staff_mobility_rw AS (
         SELECT *
         FROM {{ source("public", "sheet2") }}
-       -- WHERE true
-        -- {% if is_incremental() %}
-        --    AND date_of_mobility >= (SELECT MAX(date_of_mobility) FROM {{ this }})
-        -- {% endif %}
+    --    WHERE true
+    --     {% if is_incremental() %}
+    --        AND date_of_mobility >= (SELECT MAX(date_of_mobility) FROM {{ this }})
+    --     {% endif %}
     )
 
     , final as (

@@ -49,7 +49,7 @@ WITH
             LATERAL FLATTEN(input => parse_json(valid_json_array_software)) AS software
     )
 
-SELECT 
+SELECT DISTINCT
     si.staff_id,
     si.name,
     si.email,
@@ -70,3 +70,5 @@ JOIN
     software_expanded sw ON s.staff_id = sw.staff_id
 JOIN 
     db_staff_int si ON s.staff_id = si.staff_id
+--WHERE 
+    --si.name = 'Jamie Duarte'
